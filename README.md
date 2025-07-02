@@ -1,4 +1,4 @@
-# WordPress Post Utils - Lean Post Management
+# WordPress Post Utilities
 
 A lightweight WordPress library for working with posts and post operations. Provides clean APIs for post retrieval, content management, meta operations, and bulk actions with value/label formatting perfect for forms and admin interfaces.
 
