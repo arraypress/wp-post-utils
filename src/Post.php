@@ -818,4 +818,107 @@ class Post {
 		return wp_delete_post( $post_id, $force ) !== false;
 	}
 
+	// ========================================
+	// Admin Interface
+	// ========================================
+
+	/**
+	 * Get admin edit URL for a post.
+	 *
+	 * @param int $post_id Post ID.
+	 *
+	 * @return string|null Admin URL or null if invalid.
+	 */
+	public static function get_admin_url( int $post_id ): ?string {
+		if ( ! self::exists( $post_id ) ) {
+			return null;
+		}
+
+		$url = get_edit_post_link( $post_id );
+
+		return $url ?: null;
+	}
+
+	/**
+	 * Get admin edit link for a post.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $label   Optional link text.
+	 *
+	 * @return string|null HTML link or null if invalid.
+	 */
+	public static function get_admin_link( int $post_id, string $label = '' ): ?string {
+		$post = self::get( $post_id );
+		if ( ! $post ) {
+			return null;
+		}
+
+		if ( empty( $label ) ) {
+			$label = $post->post_title;
+		}
+
+		$url = self::get_admin_url( $post_id );
+		if ( ! $url ) {
+			return null;
+		}
+
+		return sprintf( '<a href="%s">%s</a>', esc_url( $url ), esc_html( $label ) );
+	}
+
+	// ========================================
+	// Taxonomy Operations
+	// ========================================
+
+	/**
+	 * Check if post has term in taxonomy.
+	 *
+	 * @param int    $post_id  Post ID.
+	 * @param mixed  $term     Term ID, slug, or name.
+	 * @param string $taxonomy Taxonomy name.
+	 *
+	 * @return bool True if has term.
+	 */
+	public static function has_term( int $post_id, $term, string $taxonomy ): bool {
+		return has_term( $term, $taxonomy, $post_id );
+	}
+
+	/**
+	 * Check if post is in category.
+	 *
+	 * @param int   $post_id  Post ID.
+	 * @param mixed $category Category ID, slug, or name.
+	 *
+	 * @return bool True if in category.
+	 */
+	public static function is_in_category( int $post_id, $category ): bool {
+		return has_term( $category, 'category', $post_id );
+	}
+
+	/**
+	 * Check if post has tag.
+	 *
+	 * @param int   $post_id Post ID.
+	 * @param mixed $tag     Tag ID, slug, or name.
+	 *
+	 * @return bool True if has tag.
+	 */
+	public static function has_tag( int $post_id, $tag ): bool {
+		return has_term( $tag, 'post_tag', $post_id );
+	}
+
+	/**
+	 * Get post terms for a taxonomy.
+	 *
+	 * @param int    $post_id  Post ID.
+	 * @param string $taxonomy Taxonomy name.
+	 * @param array  $args     Optional arguments.
+	 *
+	 * @return array|null Array of terms or null on failure.
+	 */
+	public static function get_terms( int $post_id, string $taxonomy, array $args = [] ): ?array {
+		$terms = wp_get_post_terms( $post_id, $taxonomy, $args );
+
+		return ! is_wp_error( $terms ) ? $terms : null;
+	}
+
 }

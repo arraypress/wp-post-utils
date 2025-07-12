@@ -419,4 +419,102 @@ class Posts {
 		return $results;
 	}
 
+	// ========================================
+	// Counting & Statistics
+	// ========================================
+
+	/**
+	 * Get the total count of posts by type and status.
+	 *
+	 * @param string       $post_type Optional. Post type. Default 'post'.
+	 * @param string|array $status    Optional. Post status or array of statuses. Default 'publish'.
+	 *
+	 * @return int The total count of posts.
+	 */
+	public static function get_count( string $post_type = 'post', $status = 'publish' ): int {
+		$counts = wp_count_posts( $post_type );
+
+		if ( $status === 'any' ) {
+			return array_sum( (array) $counts );
+		}
+
+		if ( is_string( $status ) ) {
+			return (int) ( $counts->$status ?? 0 );
+		}
+
+		if ( is_array( $status ) ) {
+			$total = 0;
+			foreach ( $status as $stat ) {
+				$total += (int) ( $counts->$stat ?? 0 );
+			}
+
+			return $total;
+		}
+
+		return 0;
+	}
+
+	// ========================================
+	// Validation & Sanitization
+	// ========================================
+
+	/**
+	 * Sanitize and validate a list of post IDs.
+	 *
+	 * @param array|string|int $posts     Array of post IDs or single post ID.
+	 * @param string|array     $post_type Optional. Post type(s) to validate against. Default 'any'.
+	 * @param bool             $validate  Optional. Whether to validate posts exist. Default true.
+	 *
+	 * @return array Array of sanitized post IDs.
+	 */
+	public static function sanitize( $posts, $post_type = 'any', bool $validate = true ): array {
+		// Handle various input types
+		if ( is_string( $posts ) || is_int( $posts ) ) {
+			$posts = [ $posts ];
+		}
+
+		if ( ! is_array( $posts ) ) {
+			return [];
+		}
+
+		$valid_posts = [];
+
+		foreach ( $posts as $post ) {
+			$post_id = absint( $post );
+
+			if ( empty( $post_id ) ) {
+				continue;
+			}
+
+			// Skip validation if not required
+			if ( ! $validate ) {
+				$valid_posts[] = $post_id;
+				continue;
+			}
+
+			// Validate post exists and matches type
+			$post_obj = get_post( $post_id );
+			if ( ! $post_obj ) {
+				continue;
+			}
+
+			// Check post type if specified
+			if ( $post_type !== 'any' ) {
+				$current_type = $post_obj->post_type;
+
+				if ( is_array( $post_type ) ) {
+					if ( ! in_array( $current_type, $post_type, true ) ) {
+						continue;
+					}
+				} elseif ( $current_type !== $post_type ) {
+					continue;
+				}
+			}
+
+			$valid_posts[] = $post_id;
+		}
+
+		return array_unique( $valid_posts );
+	}
+
 }
