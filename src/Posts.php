@@ -517,4 +517,159 @@ class Posts {
 		return array_unique( $valid_posts );
 	}
 
+	// ========================================
+	// Statistics & Analysis
+	// ========================================
+
+	/**
+	 * Calculate the average age of posts based on their publishing dates.
+	 *
+	 * @param array $post_ids Array of post IDs.
+	 *
+	 * @return int|null Average age in seconds, or null if no valid dates found.
+	 */
+	public static function calculate_average_age( array $post_ids ): ?int {
+		if ( empty( $post_ids ) ) {
+			return null;
+		}
+
+		$total_age    = 0;
+		$valid_items  = 0;
+		$current_time = current_time( 'timestamp' );
+
+		foreach ( $post_ids as $post_id ) {
+			$post_date = get_post_field( 'post_date', $post_id );
+
+			if ( empty( $post_date ) ) {
+				continue;
+			}
+
+			$post_timestamp = strtotime( $post_date );
+
+			if ( $post_timestamp === false ) {
+				continue;
+			}
+
+			$total_age += ( $current_time - $post_timestamp );
+			$valid_items ++;
+		}
+
+		if ( $valid_items === 0 ) {
+			return null;
+		}
+
+		return (int) ( $total_age / $valid_items );
+	}
+
+	/**
+	 * Calculate the average age of posts in days.
+	 *
+	 * @param array $post_ids Array of post IDs.
+	 *
+	 * @return int|null Average age in days, or null if no valid dates found.
+	 */
+	public static function calculate_average_age_days( array $post_ids ): ?int {
+		$average_seconds = self::calculate_average_age( $post_ids );
+
+		return $average_seconds !== null ? (int) ( $average_seconds / DAY_IN_SECONDS ) : null;
+	}
+
+	/**
+	 * Calculate the average age of posts in human-readable format.
+	 *
+	 * @param array $post_ids Array of post IDs.
+	 *
+	 * @return string|null Human-readable average age, or null if no valid dates found.
+	 */
+	public static function calculate_average_age_human( array $post_ids ): ?string {
+		$average_seconds = self::calculate_average_age( $post_ids );
+
+		if ( $average_seconds === null ) {
+			return null;
+		}
+
+		return human_time_diff( current_time( 'timestamp' ) - $average_seconds, current_time( 'timestamp' ) );
+	}
+
+	// ========================================
+	// Term Analysis & Collection Operations
+	// ========================================
+
+	/**
+	 * Get unique terms from a collection of posts.
+	 *
+	 * @param array  $post_ids Array of post IDs.
+	 * @param string $taxonomy The taxonomy to retrieve terms from.
+	 * @param bool   $ids_only Whether to return only term IDs instead of objects.
+	 *
+	 * @return array Array of term objects or term IDs.
+	 */
+	public static function get_terms_from_taxonomy( array $post_ids, string $taxonomy, bool $ids_only = false ): array {
+		if ( ! taxonomy_exists( $taxonomy ) || empty( $post_ids ) ) {
+			return [];
+		}
+
+		$terms = [];
+		foreach ( $post_ids as $post_id ) {
+			$post_terms = wp_get_post_terms( $post_id, $taxonomy );
+			if ( $post_terms && ! is_wp_error( $post_terms ) ) {
+				foreach ( $post_terms as $term ) {
+					$terms[ $term->term_id ] = $term;
+				}
+			}
+		}
+
+		return $ids_only ? array_map( 'absint', wp_list_pluck( array_values( $terms ), 'term_id' ) ) : array_values( $terms );
+	}
+
+	/**
+	 * Check if taxonomy has a specific term across post collection.
+	 *
+	 * @param array  $post_ids Array of post IDs.
+	 * @param mixed  $term     The term to check for (ID, name, or slug).
+	 * @param string $taxonomy The taxonomy to check the term in.
+	 *
+	 * @return bool True if the term is found, false otherwise.
+	 */
+	public static function taxonomy_has_term( array $post_ids, $term, string $taxonomy ): bool {
+		$terms = self::get_terms_from_taxonomy( $post_ids, $taxonomy );
+
+		foreach ( $terms as $found_term ) {
+			if ( $found_term->term_id == $term ||
+			     $found_term->slug === $term ||
+			     $found_term->name === $term ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if taxonomy has all or any of the specified terms across post collection.
+	 *
+	 * @param array  $post_ids  Array of post IDs.
+	 * @param array  $terms     An array of terms to check for (IDs, names, or slugs).
+	 * @param string $taxonomy  The taxonomy to check the terms in.
+	 * @param bool   $match_all Whether all terms must be present (true) or any term (false).
+	 *
+	 * @return bool True if the specified terms are found according to match_all parameter.
+	 */
+	public static function taxonomy_has_terms( array $post_ids, array $terms, string $taxonomy, bool $match_all = true ): bool {
+		$found_count = 0;
+
+		foreach ( $terms as $term ) {
+			if ( self::taxonomy_has_term( $post_ids, $term, $taxonomy ) ) {
+				$found_count ++;
+				if ( ! $match_all ) {
+					return true;
+				}
+			} elseif ( $match_all ) {
+				return false;
+			}
+		}
+
+		return $match_all && $found_count === count( $terms );
+	}
+
 }
