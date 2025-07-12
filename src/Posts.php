@@ -672,4 +672,56 @@ class Posts {
 		return $match_all && $found_count === count( $terms );
 	}
 
+	// ========================================
+	// Author Operations
+	// ========================================
+
+	/**
+	 * Get unique author IDs from a collection of posts.
+	 *
+	 * @param array $post_ids Array of post IDs.
+	 *
+	 * @return array Array of unique author IDs.
+	 */
+	public static function get_author_ids( array $post_ids ): array {
+		if ( empty( $post_ids ) ) {
+			return [];
+		}
+
+		$author_ids = [];
+		foreach ( $post_ids as $post_id ) {
+			$author_id = get_post_field( 'post_author', $post_id );
+			if ( ! empty( $author_id ) ) {
+				$author_ids[] = (int) $author_id;
+			}
+		}
+
+		return array_unique( $author_ids );
+	}
+
+	/**
+	 * Get unique author objects from a collection of posts.
+	 *
+	 * @param array $post_ids Array of post IDs.
+	 *
+	 * @return array Array of unique WP_User objects.
+	 */
+	public static function get_authors( array $post_ids ): array {
+		$author_ids = self::get_author_ids( $post_ids );
+
+		if ( empty( $author_ids ) ) {
+			return [];
+		}
+
+		$authors = [];
+		foreach ( $author_ids as $author_id ) {
+			$user = get_userdata( $author_id );
+			if ( $user ) {
+				$authors[] = $user;
+			}
+		}
+
+		return $authors;
+	}
+
 }
