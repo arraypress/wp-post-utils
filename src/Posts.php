@@ -333,7 +333,7 @@ class Posts {
 
 		$options = [];
 		foreach ( $posts as $post ) {
-			$options[ $post->ID ] = $post->post_title;
+			$options[ $post->ID ] = esc_html( $post->post_title );
 		}
 
 		return $options;
